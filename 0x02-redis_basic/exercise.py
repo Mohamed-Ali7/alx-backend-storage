@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 """This module contains Cache class"""
 
-from typing import Callable, Union
+from functools import wraps
+from typing import Any, Callable, Union
 import redis
 import uuid
+
+
+def count_calls(method: Callable) -> Callable:
+    """Tracks the number of calls made to a method in a Cache class"""
+    @wraps(method)
+    def wrapper(self, *args, **kwargs) -> Any:
+        """returns the given method after incrementing its call counter."""
+
+        if isinstance(self._redis, redis.Redis):
+            self._redis.incr(method.__qualname__)
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
@@ -14,6 +28,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb(True)
 
+    @count_calls
     def store(self, data:  Union[str, bytes, int, float]) -> str:
         """Stores a value in the cache"""
         data_key = str(uuid.uuid4())
